@@ -75,10 +75,11 @@ class Embedding(nn.Module):
     def __init__(self, vocab_size, embed_size):
         super().__init__()
         self.weight = t.randn((vocab_size, embed_size), requires_grad=True)
+        self.vocab_size = vocab_size
 
     def forward(self, input):
         """Look up the input list of indices in the embedding matrix."""
-        x = nn.functional.one_hot(input, num_classes=10)
+        x = nn.functional.one_hot(input, num_classes=self.vocab_size)
         return t.stack([i.type(t.float32).matmul(self.weight) for i in x])
 
 
@@ -120,16 +121,21 @@ class BertEmbedding(nn.Module):
     def __init__(self, vocab_size: int, hidden_size: int, max_position_embeddings: int,
                  type_vocab_size: int, dropout: float):
         super().__init__()
-        self.token_embedding = None
-        self.position_embedding = None
-        self.token_type_embedding = None
-        self.layer_norm = None
-        self.dropout = None
-        raise NotImplementedError
+        self.token_embedding = Embedding(vocab_size, hidden_size)
+        self.position_embedding = Embedding(max_position_embeddings, hidden_size)
+        self.token_type_embedding = Embedding(type_vocab_size, hidden_size)
+        self.layer_norm = LayerNorm(hidden_size)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, input_ids, token_type_ids):
         """Add embeddings and apply layer norm and dropout."""
-        raise NotImplementedError
+        embedded_tokens = self.token_embedding(input_ids)
+        embedded_positions = self.position_embedding(t.arange(input_ids.shape[1])).expand(embedded_tokens.shape)
+        embedded_token_types = self.token_type_embedding(token_type_ids)
+        input_representation = embedded_tokens + embedded_positions + embedded_token_types
+        input_representation = self.layer_norm(input_representation)
+        input_representation = self.dropout(input_representation)
+        return input_representation
 
 
 class MultiHeadedSelfAttention(nn.Module):
