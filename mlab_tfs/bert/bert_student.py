@@ -74,12 +74,12 @@ class Embedding(nn.Module):
 
     def __init__(self, vocab_size, embed_size):
         super().__init__()
-        self.weight = None
-        raise NotImplementedError
+        self.weight = t.randn((vocab_size, embed_size), requires_grad=True)
 
     def forward(self, input):
         """Look up the input list of indices in the embedding matrix."""
-        raise NotImplementedError
+        x = nn.functional.one_hot(input, num_classes=10)
+        return t.stack([i.type(t.float32).matmul(self.weight) for i in x])
 
 
 class BertEmbedding(nn.Module):
