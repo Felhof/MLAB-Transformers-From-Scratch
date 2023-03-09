@@ -39,14 +39,17 @@ class LayerNorm(nn.Module):
     def __init__(self, normalized_shape: typing.Union[int, tuple]):
         super().__init__()
         self.normalized_shape = normalized_shape
-        self.weight = None
-        self.bias = None
-        raise NotImplementedError
+        self.weight = t.ones(normalized_shape, requires_grad=True)
+        self.bias = t.zeros(normalized_shape, requires_grad=True)
 
     def forward(self, input: TensorType[...]):
         """Apply Layer Normalization over a mini-batch of inputs."""
         eps = 1e-05
-        raise NotImplementedError
+        l = 1 if isinstance(self.normalized_shape, int) else len(self.normalized_shape)
+        d = tuple(-(x + 1) for x in range(l))
+        s = tuple(input.shape[i] for i in range(len(input.shape) - l)) + tuple([1] * l)
+        y = (input - t.reshape(input.mean(d), s)) / t.sqrt(t.reshape(input.var(dim=d, unbiased=False), s) + eps)
+        return y * self.weight + self.bias
 
 
 class Embedding(nn.Module):
