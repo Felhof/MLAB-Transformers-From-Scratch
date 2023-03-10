@@ -310,7 +310,7 @@ class Bert(nn.Module):
     The full BERT transformer encoder model which goes from token IDs to logits.
 
     Consists of the embedding, blocks, and a token output head. The token output head layer has a
-    linear layer to the hidden size, GELU, layer norm, the an unembedding linear layer to the
+    linear layer to the hidden size, GELU, layer norm, then an unembedding linear layer to the
     vocabulary size to produce ouput logits over all tokens.
 
     Args:
@@ -346,18 +346,25 @@ class Bert(nn.Module):
                  type_vocab_size: int, dropout: float, intermediate_size: int,
                  num_heads: int, num_layers: int):
         super().__init__()
-        self.embed = None
-        self.blocks = None
-        self.lin = None
-        self.gelu = None
-        self.layer_norm = None
-        self.unembed = None
-        raise NotImplementedError
+        self.embed = BertEmbedding(vocab_size, hidden_size, max_position_embeddings, type_vocab_size, dropout)
+        self.blocks = nn.Sequential(
+            *[BertBlock(hidden_size, intermediate_size, num_heads, dropout) for _ in range(num_layers)]
+        )
+        self.lin = nn.Linear(hidden_size, hidden_size)
+        self.gelu = GELU()
+        self.layer_norm = LayerNorm(hidden_size)
+        self.unembed = nn.Linear(hidden_size, vocab_size)
 
     def forward(self, input_ids):
         """Apply embedding, blocks, and token output head."""
         token_type_ids = t.zeros_like(input_ids, dtype=t.int64)
-        raise NotImplementedError
+        embedded_input = self.embed(input_ids, token_type_ids)
+        x = self.blocks(embedded_input)
+        x = self.lin(x)
+        x = self.gelu(x)
+        x = self.layer_norm(x)
+        x = self.unembed(x)
+        return x
 
 
 class BertWithClassify(nn.Module):
