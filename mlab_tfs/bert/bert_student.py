@@ -288,16 +288,21 @@ class BertBlock(nn.Module):
 
     def __init__(self, hidden_size: int, intermediate_size: int, num_heads: int, dropout: float):
         super().__init__()
-        self.attention = None
-        self.layernorm1 = None
-        self.mlp = None
-        self.layernorm2 = None
-        self.dropout = None
-        raise NotImplementedError
+        self.attention = MultiHeadedSelfAttention(num_heads, hidden_size)
+        self.layernorm1 = LayerNorm(hidden_size)
+        self.mlp = BertMLP(hidden_size, intermediate_size)
+        self.layernorm2 = LayerNorm(hidden_size)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, input, attn_mask=None):
         """Apply each of the layers in the block."""
-        raise NotImplementedError
+        self_attention = self.attention(input)
+        self_attention = self.dropout(self_attention)
+        sublayer1_result = self.layernorm1(self_attention + input)
+        intermediate = self.mlp(sublayer1_result)
+        intermediate = self.dropout(intermediate)
+        sublayer2_result = self.layernorm2(intermediate + sublayer1_result)
+        return sublayer2_result
 
 
 class Bert(nn.Module):
