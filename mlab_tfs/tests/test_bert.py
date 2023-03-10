@@ -27,6 +27,9 @@ BERT_CONFIG_STANDARD = {
 BERT_CONFIG_NO_DROPOUT = copy.deepcopy(BERT_CONFIG_STANDARD)
 BERT_CONFIG_NO_DROPOUT["dropout"] = 0.0
 
+BERT_CONFIG_SINGLE_HEAD = copy.deepcopy(BERT_CONFIG_NO_DROPOUT)
+BERT_CONFIG_SINGLE_HEAD["num_heads"] = 1
+
 # Base test class
 # TODO move somewhere better
 
@@ -190,6 +193,7 @@ class TestBertAttention(MLTest):
         Test bert_student.MultiHeadedSelfAttention for parity with
         bert_reference.SelfAttentionLayer (num_heads = 1).
         """
+        # config = BERT_CONFIG_SINGLE_HEAD
         config = BERT_CONFIG_NO_DROPOUT
 
         t.random.manual_seed(0)
@@ -200,6 +204,7 @@ class TestBertAttention(MLTest):
             hidden_size=config["hidden_size"], num_heads=config["num_heads"])
         student.eval()
 
+        # input_activations = t.rand((1, 3, 768))
         input_activations = t.rand((2, 3, 768))
         self.assert_tensors_close(student(input_activations), reference(input_activations))
 

@@ -7,6 +7,7 @@ Complete this file from top to bottom and pass the tests in ../tests/test_bert.p
 import typing
 
 import numpy as np
+import torch
 import torch as t
 from torch import nn
 from einops import rearrange, repeat
@@ -172,17 +173,28 @@ class MultiHeadedSelfAttention(nn.Module):
     def __init__(self, num_heads: int, hidden_size: int):
         super().__init__()
         self.num_heads = num_heads
-        self.project_query = None
-        self.project_key = None
-        self.project_value = None
-        self.project_output = None
-        raise NotImplementedError
+        self.project_dim = hidden_size // num_heads
+        self.project_query = nn.Linear(hidden_size, hidden_size)
+        self.project_key = nn.Linear(hidden_size, hidden_size)
+        self.project_value = nn.Linear(hidden_size, hidden_size)
+        self.project_output = nn.Linear(hidden_size, hidden_size)
 
     def forward(self, input: TensorType['batch', 'seq_length', 'hidden_size'],
                 attn_mask: typing.Optional[TensorType['batch', 'seq_length']] = None
                 ) -> TensorType['batch', 'seq_length', 'hidden_size']:
         """Apply multi-headed scaled dot product self attention with an optional attention mask."""
-        raise NotImplementedError
+        q = self.project_query(input)
+        q = rearrange(q, 'b s (h1 h2) -> b h1 s h2', h1=12)
+        k = self.project_key(input)
+        k = rearrange(k, 'b s (h1 h2) -> b h1 s h2', h1=12)
+        v = self.project_value(input)
+        v = rearrange(v, 'b s (h1 h2) -> b h1 s h2', h1=12)
+        attention = q.matmul(k.transpose(-2, -1)) / np.sqrt(self.project_dim)
+        attention = nn.Softmax(dim=-1)(attention)
+        attention = attention.matmul(v)
+        attention = rearrange(attention, 'b h1 s h2 -> b s (h1 h2)', h1=12)
+        attention = self.project_output(attention)
+        return attention
 
 
 class GELU(nn.Module):
