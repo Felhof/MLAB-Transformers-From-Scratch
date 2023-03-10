@@ -214,7 +214,7 @@ class GELU(nn.Module):
 
     def forward(self, input):
         """Apply the GELU function."""
-        raise NotImplementedError
+        return input * (0.5 * (1. + t.erf(input / np.sqrt(2))))
 
 
 class BertMLP(nn.Module):
